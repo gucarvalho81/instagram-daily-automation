@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InstaAuto AI - Painel de Controle e Automação Diária</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Container Principal com Sidebar e Conteúdo -->
+  <div class="app-layout">
+    
+    <!-- Sidebar de Navegação -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">📸</div>
+        <div class="brand-text">
+          <h2>InstaAuto <span>AI</span></h2>
+          <p>Automação Autônoma</p>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <button class="nav-item active" data-tab="overview">
+          <span class="icon">📊</span>
+          <span class="label">Visão Geral</span>
+        </button>
+        <button class="nav-item" data-tab="preview">
+          <span class="icon">🎨</span>
+          <span class="label">Laboratório & Prévia</span>
+        </button>
+        <button class="nav-item" data-tab="history">
+          <span class="icon">📁</span>
+          <span class="label">Histórico & Feed</span>
+          <span class="badge" id="badge-total-posts">0</span>
+        </button>
+        <button class="nav-item" data-tab="settings">
+          <span class="icon">🔑</span>
+          <span class="label">Chaves & Agendador</span>
+        </button>
+      </nav>
+
+      <div class="system-status-box">
+        <div class="status-indicator">
+          <span class="pulse-dot active" id="pulse-indicator"></span>
+          <span id="status-text">Sistema Ativo</span>
+        </div>
+        <div class="cron-time" id="sidebar-cron">Agendado: --:--</div>
+        <div class="sidebar-account-link" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-subtle);">
+          <a href="https://www.instagram.com/thebackenddrop/" target="_blank" id="sidebar-instagram-link" style="color: var(--primary); text-decoration: none; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+            <span>📸</span> @<span id="sidebar-ig-handle">thebackenddrop</span> ↗
+          </a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Conteúdo Principal -->
+    <main class="main-content">
+      
+      <!-- Topbar Header -->
+      <header class="topbar">
+        <div class="topbar-title">
+          <h1 id="page-title">Visão Geral da Automação</h1>
+          <p id="page-subtitle">Monitore as publicações, métricas e o status do motor autônomo</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-secondary" id="btn-quick-dryrun">
+            <span>🧪</span> Simular (Dry-Run)
+          </button>
+          <button class="btn btn-primary" id="btn-quick-publish">
+            <span>🚀</span> Disparar Post Agora
+          </button>
+        </div>
+      </header>
+
+      <!-- SEÇÃO 1: VISÃO GERAL -->
+      <section id="tab-overview" class="tab-pane active">
+        <!-- Cards de Métricas -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-icon blue">⏰</div>
+            <div class="metric-data">
+              <span class="metric-label">Próximo Disparo</span>
+              <h3 id="metric-schedule-time">--:--</h3>
+              <p class="metric-sub" id="metric-schedule-tz">Fuso: America/Sao_Paulo</p>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon purple">🤖</div>
+            <div class="metric-data">
+              <span class="metric-label">Modelo de IA Ativo</span>
+              <h3 id="metric-gemini-model">Gemini Flash</h3>
+              <p class="metric-sub">Com Fallback Multi-Modelo</p>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon emerald">📈</div>
+            <div class="metric-data">
+              <span class="metric-label">Total de Posts Salvos</span>
+              <h3 id="metric-total-posts">0</h3>
+              <p class="metric-sub">Histórico persistido no SQLite</p>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon cyan">🎨</div>
+            <div class="metric-data">
+              <span class="metric-label">Resolução Gráfica</span>
+              <h3>1080 x 1350</h3>
+              <p class="metric-sub">HD Vertical (resvg nativo)</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloco de Destaque do Último Post -->
+        <div class="featured-grid">
+          <div class="panel latest-post-panel">
+            <div class="panel-header">
+              <h3>📸 Último Post Publicado no Instagram</h3>
+              <span class="status-badge live" id="latest-status-badge">PUBLICADO</span>
+            </div>
+            <div class="latest-post-body" id="latest-post-container">
+              <div class="post-preview-card">
+                <img id="latest-post-img" src="/api/media/latest-card-1080x1350.png" alt="Último Card Publicado" onerror="this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=1080&h=1350&fit=crop'" />
+              </div>
+              <div class="latest-post-details">
+                <div class="post-tag-badge" id="latest-post-tag">CARREGANDO...</div>
+                <h2 id="latest-post-title">Aguardando dados...</h2>
+                <div class="post-points" id="latest-post-points">
+                  <!-- Injetado via JS -->
+                </div>
+                <div class="post-caption-box">
+                  <div class="caption-header-row">
+                    <label>Legenda Publicada:</label>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-copy-latest-caption" style="padding: 4px 10px; font-size: 11px;">
+                      <span>📋</span> Copiar Legenda
+                    </button>
+                  </div>
+                  <pre id="latest-post-caption">Carregando legenda...</pre>
+                </div>
+                <div class="post-footer-actions">
+                  <a href="https://www.instagram.com/thebackenddrop/" target="_blank" class="btn btn-outline" id="latest-instagram-link">
+                    <span>🔗</span> Ver no Instagram (@thebackenddrop) ↗
+                  </a>
+                  <span class="post-timestamp" id="latest-post-date">--/--/----</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 2: LABORATÓRIO & PRÉVIA INSTANTÂNEA -->
+      <section id="tab-preview" class="tab-pane">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h3>🧪 Laboratório de Criação e Prévia Instantânea</h3>
+              <p>Gere e visualize o card e o texto em alta definição antes de publicar no Instagram</p>
+            </div>
+          </div>
+
+          <div class="preview-layout">
+            <div class="preview-controls">
+              <div class="form-group">
+                <label for="preview-custom-theme">Tema / Tópico para esta prévia:</label>
+                <textarea id="preview-custom-theme" rows="4" placeholder="Ex: Arquitetura de microsserviços com Kafka, Postgres locks e resiliência com circuit breaker..."></textarea>
+              </div>
+
+              <div class="preset-pills">
+                <label>Sugestões rápidas:</label>
+                <div class="pills-list">
+                  <button type="button" class="pill" data-theme="Otimizações e índices avançados no PostgreSQL em produção">PostgreSQL</button>
+                  <button type="button" class="pill" data-theme="Mensageria e Dead-Letter Queues no RabbitMQ e Apache Kafka">Kafka & Queues</button>
+                  <button type="button" class="pill" data-theme="Padrões de resiliência: Circuit Breaker, Retries exponenciais e Outbox Pattern">Resiliência</button>
+                  <button type="button" class="pill" data-theme="Boas práticas de System Design e observabilidade com OpenTelemetry">System Design</button>
+                </div>
+              </div>
+
+              <div class="btn-group">
+                <button class="btn btn-primary" id="btn-generate-preview">
+                  <span>✨</span> Gerar Prévia Agora
+                </button>
+              </div>
+
+              <div class="preview-text-output" id="preview-text-box" style="display: none;">
+                <div class="post-tag-badge" id="preview-tag">--</div>
+                <h3 id="preview-title" style="margin: 10px 0;">--</h3>
+                <ul id="preview-points-list" class="styled-list"></ul>
+                <div class="caption-header-row" style="margin-top: 15px;">
+                  <label style="font-weight: 600; margin-bottom: 0;">Legenda Gerada:</label>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-copy-preview-caption" style="padding: 4px 10px; font-size: 11px;">
+                    <span>📋</span> Copiar Legenda
+                  </button>
+                </div>
+                <pre id="preview-caption-output"></pre>
+              </div>
+            </div>
+
+            <div class="preview-visual">
+              <div class="phone-mockup">
+                <div class="phone-notch"></div>
+                <div class="phone-screen">
+                  <div class="insta-header">
+                    <div class="insta-avatar"></div>
+                    <span class="insta-username">@thebackenddrop</span>
+                  </div>
+                  <div class="insta-media">
+                    <img id="preview-rendered-img" src="/api/media/latest-card-1080x1350.png" alt="Prévia do Card" onerror="this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=1080&h=1350&fit=crop'" />
+                    <div class="preview-loading-overlay" id="preview-loader" style="display: none;">
+                      <div class="spinner"></div>
+                      <p>Renderizando Card 1080x1350 HD...</p>
+                    </div>
+                  </div>
+                  <div class="insta-footer">
+                    <div class="insta-icons">❤️ 💬 🚀</div>
+                    <p class="insta-caption-snippet" id="preview-caption-snippet">Gere uma prévia para ver o resultado ao vivo...</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 3: HISTÓRICO & GALERIA DE POSTS -->
+      <section id="tab-history" class="tab-pane">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h3>📁 Histórico de Posts Publicados</h3>
+              <p>Todos os conteúdos criados pelo Gemini e persistidos no SQLite local</p>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btn-refresh-history">
+              <span>🔄</span> Atualizar
+            </button>
+          </div>
+
+          <div class="history-grid" id="history-grid-container">
+            <!-- Injetado dinamicamente via app.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- SEÇÃO 4: CHAVES & AGENDAMENTO -->
+      <section id="tab-settings" class="tab-pane">
+        <div class="settings-grid">
+          
+          <!-- Card Google Gemini -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="header-with-icon">
+                <span class="icon purple">🤖</span>
+                <div>
+                  <h3>Google Gemini API</h3>
+                  <p>Motor de Inteligência Artificial para geração de conteúdo técnico</p>
+                </div>
+              </div>
+            </div>
+
+            <form id="form-gemini-settings">
+              <div class="form-group">
+                <label for="cfg-gemini-key">API Key do Google AI Studio:</label>
+                <div class="input-with-action">
+                  <input type="password" id="cfg-gemini-key" placeholder="Digite uma nova chave para atualizar..." />
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-test-gemini">
+                    <span>⚡</span> Testar Conexão
+                  </button>
+                </div>
+                <small id="gemini-key-status">Status da chave atual: Verificando...</small>
+              </div>
+
+              <div class="form-group">
+                <label for="cfg-gemini-model">Modelo Primário do Gemini:</label>
+                <select id="cfg-gemini-model">
+                  <option value="gemini-3.5-flash">gemini-3.5-flash (Ultra Rápido)</option>
+                  <option value="gemini-3.8-flash">gemini-3.8-flash (Equilibrado)</option>
+                  <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Leve)</option>
+                  <option value="gemini-flash-latest">gemini-flash-latest</option>
+                </select>
+                <small>Caso o modelo selecionado sofra sobrecarga, o sistema alterna automaticamente via fallback.</small>
+              </div>
+
+              <button type="submit" class="btn btn-primary">Salvar Configurações do Gemini</button>
+            </form>
+          </div>
+
+          <!-- Card Meta Instagram Graph API -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="header-with-icon">
+                <span class="icon pink">📸</span>
+                <div>
+                  <h3>Meta Instagram Graph API (v21.0)</h3>
+                  <p>Credenciais de publicação oficial no Feed da conta profissional</p>
+                </div>
+              </div>
+            </div>
+
+            <form id="form-meta-settings">
+              <div class="form-group">
+                <label for="cfg-meta-username">Nome de Usuário (@):</label>
+                <input type="text" id="cfg-meta-username" placeholder="thebackenddrop" />
+              </div>
+
+              <div class="form-group">
+                <label for="cfg-meta-id">Instagram Business Account ID:</label>
+                <input type="text" id="cfg-meta-id" placeholder="Ex: 17841429809097880" />
+              </div>
+
+              <div class="form-group">
+                <label for="cfg-meta-token">Access Token de Longa Duração (System User):</label>
+                <input type="password" id="cfg-meta-token" placeholder="Insira novo token para atualizar..." />
+                <small id="meta-token-status">Status do token atual: Verificando...</small>
+              </div>
+
+              <button type="submit" class="btn btn-primary">Salvar Credenciais da Meta</button>
+            </form>
+          </div>
+
+          <!-- Card Editorial & Persona -->
+          <div class="panel full-width">
+            <div class="panel-header">
+              <div class="header-with-icon">
+                <span class="icon emerald">🎯</span>
+                <div>
+                  <h3>Diretrizes Editoriais & Persona do Conteúdo</h3>
+                  <p>Defina o tema padrão, persona da IA e nicho de postagens</p>
+                </div>
+              </div>
+            </div>
+
+            <form id="form-theme-settings">
+              <div class="form-group">
+                <label for="cfg-topic-theme">Prompt de Contexto / Tema Geral:</label>
+                <textarea id="cfg-topic-theme" rows="4"></textarea>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group col">
+                  <label for="cfg-schedule-time">Horário Diário de Disparo (24h):</label>
+                  <input type="time" id="cfg-schedule-time" value="09:00" />
+                </div>
+                <div class="form-group col">
+                  <label for="cfg-timezone">Fuso Horário (Timezone):</label>
+                  <select id="cfg-timezone">
+                    <option value="America/Sao_Paulo">America/Sao_Paulo (Brasília)</option>
+                    <option value="America/Manaus">America/Manaus</option>
+                    <option value="America/Fortaleza">America/Fortaleza</option>
+                    <option value="UTC">UTC</option>
+                    <option value="America/New_York">America/New_York</option>
+                    <option value="Europe/Lisbon">Europe/Lisbon</option>
+                  </select>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary">Salvar Tema & Agendamento</button>
+            </form>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Container de Toasts de Notificação -->
+  <div id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

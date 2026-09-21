@@ -1,0 +1,346 @@
+{
+  "name": "Automação Diária Instagram - Gemini + Creatomate + Meta Graph API v21.0",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-schedule-trigger",
+      "name": "Schedule Trigger (09:00 Diário)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    theme: $env.TOPIC_THEME || 'Dicas de Produtividade para Desenvolvedores de Software',\n    geminiApiKey: $env.GEMINI_API_KEY,\n    creatomateApiKey: $env.CREATOMATE_API_KEY,\n    creatomateTemplateId: $env.CREATOMATE_TEMPLATE_ID,\n    metaIgAccountId: $env.META_IG_ACCOUNT_ID,\n    metaAccessToken: $env.META_ACCESS_TOKEN\n  }\n}];"
+      },
+      "id": "node-config-setup",
+      "name": "Config & Variáveis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={{ $json.geminiApiKey }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": \"Atue como um Engenheiro de Software Principal / Staff Engineer e criador de conteúdo técnico de elite. Seu objetivo é gerar um post diário denso, ultra-prático e sem jargões corporativos vazios para desenvolvedores de software backend. Gere um conteúdo técnico inédito sobre: '\" + $json.theme + \"'. Diretrizes estritas de layout: 1. tag: Palavra-chave de categoria em caixa alta (ex: SYSTEM DESIGN, POSTGRESQL, RESILIÊNCIA, DISTRIBUÍDOS). 2. titulo: Curto e direto. MÁXIMO 40 CARACTERES (MÁXIMO 5 PALAVRAS). 3. ponto_1, ponto_2, ponto_3: Regras práticas acionáveis em produção. MÁXIMO 75 CARACTERES CADA (1 a 2 linhas curtas). 4. legenda: Explicação contextualizando o problema, aprofundando os 3 pontos, finalizando com: 'Salve este post para consultar no seu próximo desenho de arquitetura 📌' e 5 hashtags (#backend #systemdesign #softwareengineering #microservices #cloud). Retorne estritamente em JSON com as chaves: tag, titulo, ponto_1, ponto_2, ponto_3, legenda.\"\n    }]\n  }],\n  \"generationConfig\": {\n    \"responseMimeType\": \"application/json\",\n    \"temperature\": 0.7\n  }\n}"
+      },
+      "id": "node-gemini-request",
+      "name": "Google Gemini 3.6 Flash",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseText = $input.first().json.candidates[0].content.parts[0].text;\nconst parsed = JSON.parse(responseText);\n\nreturn [{\n  json: {\n    tag: parsed.tag || 'SYSTEM DESIGN',\n    titulo: parsed.titulo || parsed.card_title,\n    ponto_1: parsed.ponto_1 || parsed.point_1,\n    ponto_2: parsed.ponto_2 || parsed.point_2,\n    ponto_3: parsed.ponto_3 || parsed.point_3,\n    legenda: parsed.legenda || parsed.caption,\n    card_title: parsed.titulo || parsed.card_title,\n    caption: parsed.legenda || parsed.caption\n  }\n}];"
+      },
+      "id": "node-parse-gemini",
+      "name": "Parse Conteúdo Gemini",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [740, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.creatomate.com/v1/renders",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Config & Variáveis').first().json.creatomateApiKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"template_id\": \"{{ $('Config & Variáveis').first().json.creatomateTemplateId }}\",\n  \"modifications\": {\n    \"Tag\": \"{{ $json.tag }}\",\n    \"tag\": \"{{ $json.tag }}\",\n    \"Title\": \"{{ $json.titulo }}\",\n    \"Titulo\": \"{{ $json.titulo }}\",\n    \"Ponto-1\": \"{{ $json.ponto_1 }}\",\n    \"Point1\": \"{{ $json.ponto_1 }}\",\n    \"Ponto1\": \"{{ $json.ponto_1 }}\",\n    \"Ponto-2\": \"{{ $json.ponto_2 }}\",\n    \"Point2\": \"{{ $json.ponto_2 }}\",\n    \"Ponto2\": \"{{ $json.ponto_2 }}\",\n    \"Ponto-3\": \"{{ $json.ponto_3 }}\",\n    \"Point3\": \"{{ $json.ponto_3 }}\",\n    \"Ponto3\": \"{{ $json.ponto_3 }}\"\n  }\n}"
+      },
+      "id": "node-creatomate-render",
+      "name": "Creatomate Iniciar Render",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "node-wait-creatomate",
+      "name": "Wait (Renderização)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1180, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.creatomate.com/v1/renders/{{ $('Creatomate Iniciar Render').first().json[0].id || $('Creatomate Iniciar Render').first().json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Config & Variáveis').first().json.creatomateApiKey }}"
+            }
+          ]
+        }
+      },
+      "id": "node-check-creatomate",
+      "name": "Creatomate Checar Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1400, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $('Config & Variáveis').first().json.metaIgAccountId }}/media",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "image_url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $('Parse Conteúdo Gemini').first().json.caption }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Config & Variáveis').first().json.metaAccessToken }}"
+            }
+          ]
+        }
+      },
+      "id": "node-meta-create-container",
+      "name": "Meta Criar Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1620, 300]
+    },
+    {
+      "parameters": {
+        "amount": 10,
+        "unit": "seconds"
+      },
+      "id": "node-wait-meta",
+      "name": "Wait (Meta Processing)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1840, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v21.0/{{ $('Meta Criar Container').first().json.id }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "status_code,status"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Config & Variáveis').first().json.metaAccessToken }}"
+            }
+          ]
+        }
+      },
+      "id": "node-meta-check-status",
+      "name": "Meta Checar Container FINISHED",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2060, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $('Config & Variáveis').first().json.metaIgAccountId }}/media_publish",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $('Meta Criar Container').first().json.id }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $('Config & Variáveis').first().json.metaAccessToken }}"
+            }
+          ]
+        }
+      },
+      "id": "node-meta-publish",
+      "name": "Meta Publicar no Feed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2280, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const publishedId = $input.first().json.id;\nconst title = $('Parse Conteúdo Gemini').first().json.card_title;\n\nreturn [{\n  json: {\n    status: 'SUCCESS',\n    publishedPostId: publishedId,\n    title: title,\n    publishedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "node-summary",
+      "name": "Resumo da Execução",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2500, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (09:00 Diário)": {
+      "main": [
+        [
+          {
+            "node": "Config & Variáveis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config & Variáveis": {
+      "main": [
+        [
+          {
+            "node": "Google Gemini 1.5 Flash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini 1.5 Flash": {
+      "main": [
+        [
+          {
+            "node": "Parse Conteúdo Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Conteúdo Gemini": {
+      "main": [
+        [
+          {
+            "node": "Creatomate Iniciar Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Creatomate Iniciar Render": {
+      "main": [
+        [
+          {
+            "node": "Wait (Renderização)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (Renderização)": {
+      "main": [
+        [
+          {
+            "node": "Creatomate Checar Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Creatomate Checar Status": {
+      "main": [
+        [
+          {
+            "node": "Meta Criar Container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meta Criar Container": {
+      "main": [
+        [
+          {
+            "node": "Wait (Meta Processing)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (Meta Processing)": {
+      "main": [
+        [
+          {
+            "node": "Meta Checar Container FINISHED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meta Checar Container FINISHED": {
+      "main": [
+        [
+          {
+            "node": "Meta Publicar no Feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meta Publicar no Feed": {
+      "main": [
+        [
+          {
+            "node": "Resumo da Execução",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "instagram-daily-automation",
+  "version": "1.0.0",
+  "description": "Automação 100% autônoma para geração e publicação diária no Instagram com Gemini Flash, gerador gráfico local HD e Meta Graph API v21.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js --web",
+    "web": "node src/index.js --web",
+    "dev": "node src/index.js --web",
+    "run:once": "node src/index.js --run-once",
+    "run:dry": "node src/index.js --run-once --dry-run",
+    "test": "node tests/pipeline.test.js"
+  },
+  "keywords": [
+    "instagram",
+    "automation",
+    "gemini",
+    "meta-graph-api",
+    "social-media"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "dotenv": "^16.4.7",
+    "node-cron": "^3.0.3"
+  }
+}

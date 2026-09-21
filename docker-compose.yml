@@ -1,0 +1,14 @@
+services:
+  instagram-automation:
+    build: .
+    container_name: instagram-daily-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Persiste o banco SQLite de histórico de posts no host
+      - ./data:/app/data
+    ports:
+      - "3000:3000"
+    environment:
+      - TZ=America/Sao_Paulo
