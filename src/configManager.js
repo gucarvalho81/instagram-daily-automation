@@ -73,6 +73,10 @@ export function updateEnvFile(updates) {
     if (k === 'SCHEDULE_TIME') config.scheduleTime = v;
     if (k === 'TIMEZONE') config.timezone = v;
     if (k === 'DRY_RUN') config.dryRun = String(v).toLowerCase() === 'true';
+    if (k === 'DASHBOARD_PASSWORD') config.dashboardPassword = v;
+    if (k === 'NICHE_LABEL') config.nicheLabel = v;
+    if (k === 'CARD_CTA') config.cardCta = v;
+    if (k === 'HASHTAGS') config.defaultHashtags = v;
   }
 
   return true;
@@ -100,6 +104,10 @@ export function getSafeConfig() {
     topicTheme: config.topicTheme,
     scheduleTime: config.scheduleTime,
     timezone: config.timezone,
-    dryRun: config.dryRun
+    dryRun: config.dryRun,
+    hasDashboardPassword: Boolean(config.dashboardPassword && config.dashboardPassword.trim().length > 0),
+    nicheLabel: config.nicheLabel,
+    cardCta: config.cardCta,
+    defaultHashtags: config.defaultHashtags
   };
 }

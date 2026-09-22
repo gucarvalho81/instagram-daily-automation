@@ -54,6 +54,11 @@
             <span>📸</span> @<span id="sidebar-ig-handle">thebackenddrop</span> ↗
           </a>
         </div>
+        <div id="sidebar-auth-box" style="display: none; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-subtle);">
+          <button id="btn-sidebar-logout" class="btn btn-secondary" style="width: 100%; font-size: 11px; padding: 6px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <span>🔒</span> <span>Bloquear Painel</span>
+          </button>
+        </div>
       </div>
     </aside>
 
@@ -363,10 +368,89 @@
             </form>
           </div>
 
+          <!-- Card de Customização Visual de Nicho & Rodapé -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="header-with-icon">
+                <span class="icon purple">🎨</span>
+                <div>
+                  <h3>Nicho do Card & Chamadas</h3>
+                  <p>Adapte os textos fixos do Card SVG e da legenda para o seu segmento</p>
+                </div>
+              </div>
+            </div>
+
+            <form id="form-niche-settings">
+              <div class="form-group">
+                <label for="cfg-niche-label">Rótulo de Nicho no Rodapé do Card:</label>
+                <input type="text" id="cfg-niche-label" placeholder="Ex: TECH & SYSTEM DESIGN ou FINANÇAS" />
+                <small>Exibido ao lado do seu @ no rodapé inferior da imagem.</small>
+              </div>
+
+              <div class="form-group">
+                <label for="cfg-card-cta">Chamada para Ação (CTA) do Card:</label>
+                <input type="text" id="cfg-card-cta" placeholder="Ex: SALVE PARA CONSULTAR 📌" />
+              </div>
+
+              <div class="form-group">
+                <label for="cfg-hashtags">Hashtags Padrão da Legenda:</label>
+                <input type="text" id="cfg-hashtags" placeholder="#backend #systemdesign #softwareengineering" />
+              </div>
+
+              <button type="submit" class="btn btn-primary">Salvar Nicho & Rodapé</button>
+            </form>
+          </div>
+
+          <!-- Card de Segurança e Proteção do Painel -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="header-with-icon">
+                <span class="icon amber">🛡️</span>
+                <div>
+                  <h3>Segurança do Dashboard (Guard)</h3>
+                  <p>Proteja o acesso a este painel e APIs em ambientes públicos</p>
+                </div>
+              </div>
+            </div>
+
+            <form id="form-security-settings">
+              <div class="form-group">
+                <label for="cfg-dashboard-password">Senha de Acesso ao Painel:</label>
+                <input type="password" id="cfg-dashboard-password" placeholder="Deixe em branco para acesso livre..." />
+                <small id="security-pwd-status">Status atual: Verificando proteção...</small>
+              </div>
+
+              <button type="submit" class="btn btn-primary">Atualizar Senha de Proteção</button>
+            </form>
+          </div>
+
         </div>
       </section>
 
     </main>
+  </div>
+
+  <!-- Modal de Autenticação / Bloqueio do Dashboard -->
+  <div id="auth-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-lock-icon">🔒</div>
+        <h2>Painel Protegido</h2>
+        <p>Insira a senha mestra configurada para acessar o InstaAuto AI</p>
+      </div>
+
+      <form id="form-login-modal">
+        <div class="form-group">
+          <input type="password" id="modal-password-input" class="modal-input" placeholder="Digite sua senha de acesso..." autocomplete="current-password" required />
+          <div id="modal-auth-error" class="modal-error" style="display: none;"></div>
+        </div>
+
+        <button type="submit" id="btn-modal-unlock" class="btn btn-primary btn-block">
+          <span>Desbloquear Painel</span>
+          <span class="icon">🔓</span>
+        </button>
+      </form>
+    </div>
   </div>
 
   <!-- Container de Toasts de Notificação -->

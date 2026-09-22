@@ -26,6 +26,14 @@ export const config = {
   // Flag de execução simulada (Dry-Run)
   dryRun: process.env.DRY_RUN === 'true' || process.argv.includes('--dry-run'),
 
+  // Autenticação e Segurança do Dashboard Web
+  dashboardPassword: process.env.DASHBOARD_PASSWORD || '',
+
+  // Customização de Nicho e Layout do Card
+  nicheLabel: process.env.NICHE_LABEL || 'TECH & SYSTEM DESIGN',
+  cardCta: process.env.CARD_CTA || 'SALVE PARA CONSULTAR 📌',
+  defaultHashtags: process.env.HASHTAGS || '',
+
   // Caminho para o banco de dados SQLite local
   dbPath: path.resolve(process.cwd(), 'data', 'history.db'),
 };

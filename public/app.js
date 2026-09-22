@@ -28,6 +28,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  /**
+   * Converte a data salva em UTC (SQLite ou ISO-8601) para o fuso horário local do usuário formatado
+   * @param {string|Date} dateStr
+   * @returns {string}
+   */
+  function formatPostDate(dateStr) {
+    if (!dateStr) return 'Data não informada';
+    let cleanStr = String(dateStr).trim();
+    // Se for formato padrão do SQLite "YYYY-MM-DD HH:MM:SS" (em UTC), adiciona Z para parsing correto
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(cleanStr)) {
+      cleanStr = cleanStr.replace(' ', 'T') + 'Z';
+    }
+    const d = new Date(cleanStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
   // Elementos do DOM
   const navItems = document.querySelectorAll('.nav-item');
   const tabPanes = document.querySelectorAll('.tab-pane');
@@ -92,6 +115,56 @@ document.addEventListener('DOMContentLoaded', () => {
   const cfgScheduleTime = document.getElementById('cfg-schedule-time');
   const cfgTimezone = document.getElementById('cfg-timezone');
 
+  // Novos Formulários: Nicho & Segurança
+  const formNicheSettings = document.getElementById('form-niche-settings');
+  const formSecuritySettings = document.getElementById('form-security-settings');
+  const cfgNicheLabel = document.getElementById('cfg-niche-label');
+  const cfgCardCta = document.getElementById('cfg-card-cta');
+  const cfgHashtags = document.getElementById('cfg-hashtags');
+  const cfgDashboardPassword = document.getElementById('cfg-dashboard-password');
+  const securityPwdStatus = document.getElementById('security-pwd-status');
+
+  // Modal de Autenticação & Sidebar Lock
+  const authModal = document.getElementById('auth-modal');
+  const modalPasswordInput = document.getElementById('modal-password-input');
+  const modalAuthError = document.getElementById('modal-auth-error');
+  const formLoginModal = document.getElementById('form-login-modal');
+  const btnModalUnlock = document.getElementById('btn-modal-unlock');
+  const sidebarAuthBox = document.getElementById('sidebar-auth-box');
+  const btnSidebarLogout = document.getElementById('btn-sidebar-logout');
+
+  // Token de sessão em memória e sessionStorage
+  let authToken = sessionStorage.getItem('instaauto_token') || '';
+
+  function showAuthModal() {
+    if (authModal) {
+      authModal.style.display = 'flex';
+      modalPasswordInput.value = '';
+      if (modalAuthError) modalAuthError.style.display = 'none';
+      setTimeout(() => modalPasswordInput.focus(), 150);
+    }
+  }
+
+  function hideAuthModal() {
+    if (authModal) {
+      authModal.style.display = 'none';
+      if (modalAuthError) modalAuthError.style.display = 'none';
+    }
+  }
+
+  // Wrapper para chamadas HTTP com injeção automática de Bearer Token
+  async function apiFetch(url, options = {}) {
+    options.headers = options.headers || {};
+    if (authToken && !options.headers['Authorization']) {
+      options.headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+      showAuthModal();
+    }
+    return res;
+  }
+
   // Notificações Toast
   function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
@@ -153,9 +226,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // 1. Carregar Status do Sistema
   async function loadStatus() {
     try {
-      const res = await fetch('/api/status');
+      const res = await apiFetch('/api/status');
       if (!res.ok) return;
       const data = await res.json();
+
+      // Controle de exibição do Lock Screen e botão de logout
+      if (data.authRequired) {
+        if (!data.authenticated && !authToken) {
+          showAuthModal();
+        } else {
+          hideAuthModal();
+        }
+        if (sidebarAuthBox) sidebarAuthBox.style.display = 'block';
+      } else {
+        hideAuthModal();
+        if (sidebarAuthBox) sidebarAuthBox.style.display = 'none';
+      }
 
       isRunning = data.isPipelineRunning;
       if (isRunning) {
@@ -201,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
       : tag;
     latestPostTitle.textContent = title;
     latestPostCaption.textContent = post.caption || 'Sem legenda cadastrada.';
-    latestPostDate.textContent = (post.created_at ? new Date(post.created_at).toLocaleString('pt-BR') : 'Data não informada') + (isSimulated ? ' • Teste Dry-Run' : ' • Publicado no Feed');
+    latestPostDate.textContent = formatPostDate(post.created_at) + (isSimulated ? ' • Teste Dry-Run' : ' • Publicado no Feed');
 
     // Pontos
     latestPostPoints.innerHTML = '';
@@ -239,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 2. Carregar Configurações
   async function loadConfig() {
     try {
-      const res = await fetch('/api/config');
+      const res = await apiFetch('/api/config');
       if (!res.ok) return;
       const data = await res.json();
 
@@ -255,6 +341,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (cfgMetaUsername) cfgMetaUsername.value = data.instagramUsername || 'thebackenddrop';
       if (cfgMetaId) cfgMetaId.value = data.metaIgAccountId || '';
+
+      // Campos de Nicho & Rodapé
+      if (cfgNicheLabel) cfgNicheLabel.value = data.nicheLabel || '';
+      if (cfgCardCta) cfgCardCta.value = data.cardCta || '';
+      if (cfgHashtags) cfgHashtags.value = data.defaultHashtags || '';
+
+      // Status da Proteção do Dashboard
+      if (securityPwdStatus) {
+        if (data.hasDashboardPassword) {
+          securityPwdStatus.textContent = 'Status atual: Painel protegido por senha ativa 🔒';
+          securityPwdStatus.style.color = 'var(--accent-emerald)';
+        } else {
+          securityPwdStatus.textContent = 'Status atual: Acesso livre sem senha 🔓 (localhost)';
+          securityPwdStatus.style.color = 'var(--text-muted)';
+        }
+      }
 
       geminiKeyStatus.textContent = data.hasGeminiKey
         ? `Chave configurada: ${data.geminiApiKeyMasked} (Ativa)`
@@ -274,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadHistory() {
     try {
       historyGridContainer.innerHTML = '<p style="color: var(--text-dim); padding: 20px;">Carregando histórico...</p>';
-      const res = await fetch('/api/posts?limit=30');
+      const res = await apiFetch('/api/posts?limit=30');
       if (!res.ok) return;
       const data = await res.json();
 
@@ -318,7 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ${isSimulated 
               ? `<span class="btn btn-outline btn-sm" style="margin-top: 6px; opacity: 0.6; cursor: default;">🧪 Teste Local</span>` 
               : `<a href="${postLink}" target="_blank" class="btn btn-outline btn-sm" style="margin-top: 6px;">Ver no @${igUser} ↗</a>`}
-            <span class="history-card-date">${post.created_at ? new Date(post.created_at).toLocaleDateString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+            <span class="history-card-date">${formatPostDate(post.created_at)}</span>
           </div>
         `;
         historyGridContainer.appendChild(card);
@@ -343,7 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function triggerExecution(isDryRun) {
     try {
       showToast(`Iniciando esteira em modo ${isDryRun ? 'DRY-RUN' : 'PRODUÇÃO'}...`, 'success');
-      const res = await fetch('/api/trigger', {
+      const res = await apiFetch('/api/trigger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dryRun: isDryRun })
@@ -373,7 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnGeneratePreview.disabled = true;
 
     try {
-      const res = await fetch('/api/preview', {
+      const res = await apiFetch('/api/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ theme })
@@ -441,7 +543,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnTestGemini.textContent = 'Testando...';
 
     try {
-      const res = await fetch('/api/test-gemini', {
+      const res = await apiFetch('/api/test-gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: key || undefined })
@@ -502,7 +604,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function saveSettings(payload, successMsg) {
     try {
-      const res = await fetch('/api/config', {
+      const res = await apiFetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -519,6 +621,78 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast(err.message, 'error');
     }
   }
+
+  // Formulário de Nicho & Rodapé
+  formNicheSettings?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+      nicheLabel: cfgNicheLabel.value.trim(),
+      cardCta: cfgCardCta.value.trim(),
+      defaultHashtags: cfgHashtags.value.trim()
+    };
+    await saveSettings(payload, 'Configurações de nicho e rodapé salvas!');
+  });
+
+  // Formulário de Segurança (Dashboard Guard)
+  formSecuritySettings?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const newPwd = cfgDashboardPassword.value.trim();
+    const payload = {
+      dashboardPassword: newPwd
+    };
+    await saveSettings(payload, newPwd ? 'Senha de proteção do painel ativada!' : 'Proteção por senha desativada (acesso livre).');
+    cfgDashboardPassword.value = '';
+  });
+
+  // Submissão do Modal de Login
+  formLoginModal?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const password = modalPasswordInput.value.trim();
+    if (!password) return;
+
+    btnModalUnlock.disabled = true;
+    modalAuthError.style.display = 'none';
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.token) {
+          authToken = data.token;
+          sessionStorage.setItem('instaauto_token', data.token);
+        }
+        hideAuthModal();
+        showToast('Painel desbloqueado com sucesso!', 'success');
+        loadStatus();
+        loadConfig();
+      } else {
+        modalAuthError.textContent = data.message || 'Senha incorreta.';
+        modalAuthError.style.display = 'block';
+      }
+    } catch (err) {
+      modalAuthError.textContent = 'Falha ao autenticar: ' + err.message;
+      modalAuthError.style.display = 'block';
+    } finally {
+      btnModalUnlock.disabled = false;
+    }
+  });
+
+  // Botão de Logout no Sidebar
+  btnSidebarLogout?.addEventListener('click', async () => {
+    if (confirm('Deseja bloquear o painel agora?')) {
+      try {
+        await apiFetch('/api/auth/logout', { method: 'POST' });
+      } catch (e) {}
+      authToken = '';
+      sessionStorage.removeItem('instaauto_token');
+      showAuthModal();
+      showToast('Painel bloqueado com sucesso.', 'success');
+    }
+  });
 
   btnRefreshHistory?.addEventListener('click', loadHistory);
 

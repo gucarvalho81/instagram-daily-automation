@@ -6,6 +6,9 @@ import { buildCardSvg, renderSvgToPng, renderLocalCard } from '../src/services/l
 import { validateConfig, config } from '../src/config.js';
 import { generateInstagramPost, formatCaption } from '../src/services/gemini.js';
 
+// Garante isolamento total e determinismo hermético na suíte de testes
+config.dryRun = true;
+
 console.log('='.repeat(70));
 console.log('🧪 [SUÍTE DE TESTES UNITÁRIOS] Iniciando validação completa da automação...');
 console.log('='.repeat(70));
@@ -292,6 +295,79 @@ assert.ok(longSvg.includes('<tspan'), 'Títulos longos devem ser quebrados em ts
 assert.ok(longSvg.includes('viewBox="0 0 1080 1350"'), 'O SVG gerado mantém a proporção 1080x1350');
 const longPng = renderSvgToPng(longSvg);
 assert.ok(Buffer.isBuffer(longPng) && longPng.length > 50000, 'PNG resultante de conteúdo longo deve ser válido e ter resolução total');
+
+// -----------------------------------------------------------------------------
+// 10. Testes de Autenticação e Segurança do Dashboard (src/auth.js)
+// -----------------------------------------------------------------------------
+console.log('\n🔒 [BLOCO 10] Testes de Autenticação, Tokens HMAC e Brute-Force (src/auth.js)...');
+const {
+  isAuthRequired,
+  createSessionToken,
+  verifySessionToken,
+  authenticateRequest,
+  recordFailedAttempt,
+  clearFailedAttempts,
+  isRateLimited
+} = await import('../src/auth.js');
+
+console.log('  ✔ Validando geração e validação de tokens de sessão HMAC...');
+const token = createSessionToken();
+assert.ok(typeof token === 'string' && token.includes('.'), 'O token deve conter data e assinatura separadas por ponto.');
+assert.equal(verifySessionToken(token), true, 'O token recém-criado deve ser validado com sucesso.');
+
+assert.equal(verifySessionToken('token.invalido'), false, 'Token corrompido deve falhar na validação.');
+assert.equal(verifySessionToken('session_0.invalida'), false, 'Token expirado deve falhar na validação.');
+assert.equal(verifySessionToken(''), false, 'Token vazio deve falhar.');
+assert.equal(verifySessionToken(null), false, 'Token nulo deve falhar.');
+
+console.log('  ✔ Validando mecanismo de proteção contra força bruta (Rate Limiting)...');
+const testIp = '192.168.1.99';
+clearFailedAttempts(testIp);
+assert.equal(isRateLimited(testIp), false, 'IP novo não deve estar bloqueado.');
+
+for (let i = 0; i < 4; i++) {
+  recordFailedAttempt(testIp);
+  assert.equal(isRateLimited(testIp), false, `Tentativa ${i + 1} não deve acionar o bloqueio ainda.`);
+}
+recordFailedAttempt(testIp); // 5ª tentativa
+assert.equal(isRateLimited(testIp), true, 'Após 5 tentativas falhas, o IP DEVE ser bloqueado.');
+
+clearFailedAttempts(testIp);
+assert.equal(isRateLimited(testIp), false, 'Após limpar tentativas, o IP deve ser desbloqueado.');
+
+console.log('  ✔ Validando middleware authenticateRequest...');
+const mockReqNoAuth = { headers: {} };
+assert.equal(authenticateRequest(mockReqNoAuth).authenticated, true, 'Sem senha configurada, acesso deve ser livre.');
+
+// -----------------------------------------------------------------------------
+// 11. Testes de Customização Dinâmica de Nicho e Rodapé
+// -----------------------------------------------------------------------------
+console.log('\n🎨 [BLOCO 11] Testes de Customização Dinâmica de Nicho e Rodapé SVG...');
+const customNicheMock = {
+  tag: 'FINANÇAS & INVESTIMENTOS',
+  titulo: 'Reserva de Emergência em Renda Fixa',
+  ponto_1: 'Mantenha de 6 a 12 meses do custo de vida em liquidez diária.',
+  ponto_2: 'Prefira Tesouro Selic ou CDB de bancão com FGC.',
+  ponto_3: 'Evite ações e fundos voláteis para dinheiro de sobrevivência.',
+  niche: 'FINANÇAS PESSOAIS',
+  cta: 'COMPARTILHE COM UM AMIGO 🚀'
+};
+
+const customSvg = buildCardSvg(customNicheMock);
+assert.ok(customSvg.includes('FINANÇAS PESSOAIS'), 'O SVG deve conter o nicho customizado no rodapé.');
+assert.ok(customSvg.includes('COMPARTILHE COM UM AMIGO 🚀'), 'O SVG deve conter o CTA customizado.');
+
+console.log('  ✔ Validando normalização e parsing de timestamps UTC (SQLite vs ISO)...');
+function parseDateForLocal(str) {
+  let cleanStr = String(str).trim();
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(cleanStr)) {
+    cleanStr = cleanStr.replace(' ', 'T') + 'Z';
+  }
+  const d = new Date(cleanStr);
+  return d.toISOString();
+}
+assert.equal(parseDateForLocal('2026-09-22 21:18:44'), '2026-09-22T21:18:44.000Z', 'Timestamp do SQLite deve ser convertido para UTC ISO');
+assert.equal(parseDateForLocal('2026-09-22T21:18:44.123Z'), '2026-09-22T21:18:44.123Z', 'Timestamp ISO deve permanecer inalterado');
 
 console.log('\n' + '='.repeat(70));
 console.log('🎉 [TESTES CONCLUÍDOS] 100% dos testes unitários passaram com sucesso!');

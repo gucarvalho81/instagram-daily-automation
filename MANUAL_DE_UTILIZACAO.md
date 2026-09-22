@@ -34,7 +34,7 @@ Esta automação é um sistema completo e autônomo para criação, design e pub
 ## 🚀 2. Primeiros Passos e Inicialização
 
 ### Pré-requisitos
-- **Node.js**: Versão 20 ou superior instalada.
+- **Node.js**: Versão 22 ou superior instalada (suporte nativo ao SQLite `node:sqlite`).
 - Arquivo `.env` configurado com as chaves:
   - `GEMINI_API_KEY`: Chave do Google AI Studio.
   - `META_IG_ACCOUNT_ID`: ID da conta do Instagram (`17841429809097880`).
@@ -129,6 +129,8 @@ Permite gerenciar todas as credenciais e parâmetros operacionais da esteira com
 - **Botão "Testar Conexão do Gemini":** Faz um ping de validação em tempo real com os servidores da Google e lista os modelos disponíveis.
 - **Meta Instagram API:** Visualize o ID da conta do Instagram (`17841429809097880`), gerencie o token e configure o username oficial (`thebackenddrop`).
 - **Agendador Diário:** Defina o horário exato do disparo (ex: `08:30` ou `09:00`) e o fuso horário (`America/Sao_Paulo`).
+- **Nicho do Card & Chamadas:** Personalize o rótulo exibido no rodapé do Card SVG (`NICHE_LABEL`), a chamada para ação (`CARD_CTA`) e hashtags sugeridas (`HASHTAGS`).
+- **Segurança do Dashboard (Dashboard Guard):** Defina uma senha mestre (`DASHBOARD_PASSWORD`) para proteger o painel e rotas mutáveis contra acessos não autorizados em ambientes na nuvem. Se deixar vazio, o painel fica em modo aberto para desenvolvimento local.
 
 > [!NOTE]
 > Ao salvar qualquer alteração nas configurações, o sistema grava atomicamente no arquivo `.env` e atualiza a memória em tempo de execução sem reiniciar o servidor.
@@ -172,7 +174,7 @@ npm run run:dry
 ```
 
 ### 4. Executar os Testes Unitários Automatizados
-Valida todo o ecossistema em 9 blocos (SQLite, renderizador gráfico HD 1080x1350, validações de config, Gemini multi-modelo, segurança Dry-Run, endpoints HTTP da API e scheduler com reagendamento):
+Valida todo o ecossistema em **11 blocos** (SQLite, renderizador gráfico HD 1080x1350, validações de config, Gemini multi-modelo, segurança Dry-Run, endpoints HTTP da API, scheduler com reagendamento, módulo de autenticação HMAC/rate limiting e customização dinâmica de nicho/CTA):
 ```bash
 node tests/pipeline.test.js
 # ou via npm (no Windows PowerShell com restrição, utilize npm.cmd):

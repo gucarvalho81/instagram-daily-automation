@@ -92,6 +92,7 @@ export function getRecentTopics(limit = 15, db = getDatabase()) {
  * @returns {number} ID do registro inserido
  */
 export function savePostRecord(postData, db = getDatabase()) {
+  const createdAt = postData.created_at || new Date().toISOString();
   const stmt = db.prepare(`
     INSERT INTO posts_history (
       topic_title,
@@ -104,8 +105,9 @@ export function savePostRecord(postData, db = getDatabase()) {
       meta_container_id,
       meta_post_id,
       permalink,
-      status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      status,
+      created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const result = stmt.run(
@@ -119,7 +121,8 @@ export function savePostRecord(postData, db = getDatabase()) {
     postData.meta_container_id || '',
     postData.meta_post_id || '',
     postData.permalink || '',
-    postData.status || 'PUBLISHED'
+    postData.status || 'PUBLISHED',
+    createdAt
   );
 
   return result.lastInsertRowid;

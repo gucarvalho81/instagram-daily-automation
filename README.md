@@ -225,4 +225,17 @@ python python/pipeline.py --run-once
    - Meta Graph API: aguarda até 100 segundos com verificações ativas a cada 5s até o `status_code` ser `FINISHED`, garantindo que a mídia seja codificada antes da publicação.
 3. **Persistência Confiável**: Em caso de falha transitória, o erro é registrado no console com stack trace detalhado sem corromper a integridade do banco SQLite.
 4. **Reagendamento Dinâmico em Memória**: Ao salvar novas configurações de horário ou fuso no Dashboard Web, a rotina cron é recalculada e reagendada dinamicamente sem necessidade de reiniciar o processo Node.js ou o container Docker.
-5. **Suíte Completa de 9 Blocos de Testes**: Validação automatizada cobrindo SQLite, motor gráfico SVG/PNG HD, resiliência do Gemini, segurança do modo Dry-Run, endpoints HTTP da API e conversor de horários.
+5. **Dashboard Guard**: Autenticação opcional por senha com tokens de sessão assinados via HMAC e rate limiting contra ataques de força bruta para servidores expostos publicamente.
+6. **Suíte Completa de 11 Blocos de Testes**: Validação automatizada cobrindo SQLite, motor gráfico SVG/PNG HD, resiliência do Gemini, segurança do modo Dry-Run, endpoints HTTP da API, módulo de autenticação e customização de nicho.
+
+---
+
+## 🤝 Como Contribuir
+
+Contribuições da comunidade são muito bem-vindas! Consulte o arquivo [CONTRIBUTING.md](file:///c:/Users/guria/OneDrive/Documentos/instagram-daily-automation/CONTRIBUTING.md) para saber como configurar o ambiente local de desenvolvimento, rodar os testes unitários e enviar Pull Requests.
+
+---
+
+## 📄 Licença
+
+Este projeto é distribuído sob a licença **MIT**. Consulte o arquivo [LICENSE](file:///c:/Users/guria/OneDrive/Documentos/instagram-daily-automation/LICENSE) para mais detalhes.

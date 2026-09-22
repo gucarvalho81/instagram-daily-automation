@@ -151,10 +151,10 @@ export function buildCardSvg(content) {
     <g transform="translate(80, 1200)">
       <line x1="0" y1="0" x2="920" y2="0" stroke="#1e293b" stroke-width="1.5"/>
       <text x="0" y="55" font-family="'JetBrains Mono', monospace, sans-serif" font-size="22" font-weight="600" fill="#94a3b8" letter-spacing="0.5">
-        @${escapeXml(config.instagramUsername || 'thebackenddrop')} • SYSTEM DESIGN
+        @${escapeXml(config.instagramUsername || 'thebackenddrop')} • ${escapeXml(content.niche || config.nicheLabel || 'TECH & SYSTEM DESIGN')}
       </text>
       <text x="920" y="55" font-family="'JetBrains Mono', monospace, sans-serif" font-size="22" font-weight="700" fill="#38bdf8" text-anchor="end">
-        SALVE PARA CONSULTAR 📌
+        ${escapeXml(content.cta || config.cardCta || 'SALVE PARA CONSULTAR 📌')}
       </text>
     </g>
   </svg>

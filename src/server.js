@@ -9,6 +9,14 @@ import { runAutomationPipeline } from './pipeline.js';
 import { reschedule } from './scheduler.js';
 import { generateInstagramPost } from './services/gemini.js';
 import { renderLocalCard } from './services/localRenderer.js';
+import {
+  isAuthRequired,
+  createSessionToken,
+  authenticateRequest,
+  recordFailedAttempt,
+  clearFailedAttempts,
+  isRateLimited
+} from './auth.js';
 
 const PUBLIC_DIR = path.resolve(process.cwd(), 'public');
 const DATA_DIR = path.resolve(process.cwd(), 'data');
@@ -61,12 +69,13 @@ function parseRequestBody(req) {
  * @param {number} status
  * @param {Object} data
  */
-function sendJson(res, status, data) {
+function sendJson(res, status, data, customHeaders = {}) {
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    ...customHeaders
   });
   res.end(JSON.stringify(data));
 }
@@ -89,8 +98,66 @@ async function handleRequest(req, res) {
 
   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = parsedUrl.pathname;
+  const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '127.0.0.1';
 
   try {
+    // -------------------------------------------------------------------------
+    // API: POST /api/auth/login
+    // -------------------------------------------------------------------------
+    if (req.method === 'POST' && pathname === '/api/auth/login') {
+      if (!isAuthRequired()) {
+        return sendJson(res, 200, { success: true, message: 'Autenticação desativada.' });
+      }
+
+      if (isRateLimited(clientIp)) {
+        return sendJson(res, 429, {
+          success: false,
+          message: 'Muitas tentativas falhas. Aguarde 60 segundos antes de tentar novamente.'
+        });
+      }
+
+      const body = await parseRequestBody(req);
+      const password = (body.password || '').trim();
+
+      if (password === config.dashboardPassword) {
+        clearFailedAttempts(clientIp);
+        const token = createSessionToken();
+        const cookie = `instaauto_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`;
+        return sendJson(
+          res,
+          200,
+          { success: true, token, message: 'Login realizado com sucesso!' },
+          { 'Set-Cookie': cookie }
+        );
+      } else {
+        recordFailedAttempt(clientIp);
+        return sendJson(res, 401, { success: false, message: 'Senha incorreta.' });
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // API: POST /api/auth/logout
+    // -------------------------------------------------------------------------
+    if (req.method === 'POST' && pathname === '/api/auth/logout') {
+      const cookie = 'instaauto_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0';
+      return sendJson(res, 200, { success: true, message: 'Sessão encerrada com sucesso.' }, { 'Set-Cookie': cookie });
+    }
+
+    // -------------------------------------------------------------------------
+    // Middleware de Proteção para Rotas de Ação e Edição
+    // -------------------------------------------------------------------------
+    const protectedPostRoutes = ['/api/config', '/api/trigger', '/api/preview', '/api/test-gemini'];
+    if (req.method === 'POST' && protectedPostRoutes.includes(pathname)) {
+      const auth = authenticateRequest(req);
+      if (!auth.authenticated) {
+        return sendJson(res, 401, {
+          success: false,
+          error: 'Acesso não autorizado. Autenticação obrigatória.',
+          authRequired: true
+        });
+      }
+    }
+
     // -------------------------------------------------------------------------
     // API: GET /api/status
     // -------------------------------------------------------------------------
@@ -102,6 +169,8 @@ async function handleRequest(req, res) {
       const lastPostStmt = db.prepare('SELECT * FROM posts_history ORDER BY id DESC LIMIT 1');
       const lastPost = lastPostStmt.get() || null;
 
+      const authStatus = authenticateRequest(req);
+
       return sendJson(res, 200, {
         isPipelineRunning,
         uptimeSeconds: Math.floor((Date.now() - serverStartTime) / 1000),
@@ -109,7 +178,9 @@ async function handleRequest(req, res) {
         timezone: config.timezone,
         instagramUsername: config.instagramUsername || 'thebackenddrop',
         totalPosts: totalCount,
-        lastPost
+        lastPost,
+        authRequired: isAuthRequired(),
+        authenticated: authStatus.authenticated
       });
     }
 
@@ -150,6 +221,18 @@ async function handleRequest(req, res) {
       }
       if (body.timezone) {
         updates.TIMEZONE = body.timezone.trim();
+      }
+      if (body.dashboardPassword !== undefined) {
+        updates.DASHBOARD_PASSWORD = body.dashboardPassword.trim();
+      }
+      if (body.nicheLabel !== undefined) {
+        updates.NICHE_LABEL = body.nicheLabel.trim();
+      }
+      if (body.cardCta !== undefined) {
+        updates.CARD_CTA = body.cardCta.trim();
+      }
+      if (body.defaultHashtags !== undefined) {
+        updates.HASHTAGS = body.defaultHashtags.trim();
       }
 
       updateEnvFile(updates);

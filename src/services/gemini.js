@@ -130,15 +130,25 @@ export async function generateInstagramPost(recentPosts = [], theme = config.top
     ? `\n\nATENÇÃO - PROIBIDO REPETIR: Os tópicos a seguir já foram abordados recentemente. NÃO repita esses temas nem crie variações óbvias deles:\n${bannedTopics}`
     : '';
 
-  const systemInstruction = `Atue como um Engenheiro de Software Principal / Staff Engineer e criador de conteúdo técnico de elite.
-Seu objetivo é gerar um post diário denso, ultra-prático e sem jargões corporativos vazios para desenvolvedores de software backend.
+  const ctaPrompt = config.cardCta
+    ? `CTA: "${config.cardCta}"`
+    : 'CTA: "Salve este post para consultar no seu próximo projeto 📌"';
 
-Gere um conteúdo técnico inédito sobre um destes temas: arquitetura de microsserviços, mensageria (Kafka/RabbitMQ), banco de dados relacionais (Postgres/SQL), padrões de resiliência (Circuit Breaker, Outbox, Retry/Dead-Letter), ou boas práticas de APIs e observabilidade.
+  const hashtagsPrompt = config.defaultHashtags
+    ? `5 hashtags relevantes para o post, priorizando: ${config.defaultHashtags}`
+    : '5 hashtags de alto engajamento específicas e relevantes para o tema.';
+
+  const nicheTheme = theme || config.topicTheme || 'Desenvolvimento de Software Backend e Arquitetura de Sistemas';
+
+  const systemInstruction = `Atue como um especialista de referência e criador de conteúdo de elite no seguinte domínio:
+"${nicheTheme}"
+
+Seu objetivo é gerar um post diário denso, ultra-prático, instigante e sem clichês vazios para seu público-alvo.
 
 Diretrizes estritas de layout e tamanho (CRÍTICO: nunca ultrapasse os limites para não quebrar o layout):
-1. "tag": Uma palavra-chave de categoria em caixa alta (ex: SYSTEM DESIGN, POSTGRESQL, RESILIÊNCIA, DISTRIBUÍDOS).
+1. "tag": Uma palavra-chave de categoria em caixa alta relacionada ao tópico (ex: ${config.nicheLabel ? config.nicheLabel.split(' ')[0] : 'DESTAQUE'}).
 2. "titulo": Título curto e impactante. LIMITE RÍGIDO: MÁXIMO 40 CARACTERES (MÁXIMO 5 PALAVRAS).
-3. "ponto_1", "ponto_2", "ponto_3": Dicas práticas e acionáveis de engenharia em produção. LIMITE RÍGIDO: MÁXIMO 75 CARACTERES CADA (1 a 2 linhas curtas). Seja conciso e direto.
+3. "ponto_1", "ponto_2", "ponto_3": Dicas práticas e acionáveis. LIMITE RÍGIDO: MÁXIMO 75 CARACTERES CADA (1 a 2 linhas curtas). Seja conciso e direto.
 4. "legenda": Formate a legenda para leitura rápida e agradável no Instagram, com blocos curtos e arejados SEPARADOS OBRIGATORIAMENTE POR LINHAS EM BRANCO (\\n\\n). NUNCA gere blocos maciços de texto.
 Siga rigorosamente a seguinte estrutura:
 - Gancho / Problema em 1 a 2 frases curtas.
@@ -154,12 +164,12 @@ Siga rigorosamente a seguinte estrutura:
 - Dupla quebra de linha (\\n\\n).
 - Pergunta de engajamento para a comunidade nos comentários.
 - Dupla quebra de linha (\\n\\n).
-- CTA: "Salve este post para consultar no seu próximo desenho de arquitetura 📌"
+- ${ctaPrompt}
 - Dupla quebra de linha (\\n\\n).
-- 5 hashtags específicas (#backend #systemdesign #softwareengineering #microservices #cloud).`;
+- ${hashtagsPrompt}`;
 
-  const userPrompt = `Gere agora um post técnico inédito seguindo estritamente as diretrizes acima.${antiRepeatInstruction}
-Contexto ou preferência adicional do tema: "${theme}"
+  const userPrompt = `Gere agora um post inédito de alto valor seguindo estritamente as diretrizes acima.${antiRepeatInstruction}
+Diretriz de tema ou foco atual: "${nicheTheme}"
 LEMBRE-SE: Titulo curto (máx 40 chars, máx 5 palavras). Pontos do card com máx 75 caracteres cada.
 LEGENDA: Use quebras de linha duplas (\\n\\n) entre parágrafos e bullets 1️⃣, 2️⃣, 3️⃣ para garantir leitura limpa e espaçada no feed.`;
 
