@@ -83,6 +83,34 @@
 
       <!-- SEÇÃO 1: VISÃO GERAL -->
       <section id="tab-overview" class="tab-pane active">
+        
+        <!-- Banner Amigável de Boas-Vindas / Onboarding (Exibido se faltar configuração) -->
+        <div id="onboarding-banner" class="onboarding-banner" style="display: none;">
+          <div class="onboarding-icon">👋</div>
+          <div class="onboarding-body">
+            <h3>Bem-vindo ao InstaAuto AI!</h3>
+            <p>Sua esteira autônoma está pronta para rodar. Para começar a gerar posts e publicar no seu Feed automaticamente, configure suas chaves de API na aba de configurações ou execute uma simulação gratuita agora mesmo.</p>
+            <div class="onboarding-actions">
+              <button type="button" class="btn btn-primary btn-sm" id="btn-onboarding-keys">
+                <span>🔑</span> Configurar Minhas Chaves
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-onboarding-dryrun">
+                <span>🧪</span> Testar Simulação Rápida
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Banner de Feedback da Última Execução -->
+        <div id="execution-feedback-banner" class="execution-feedback-banner" style="display: none;">
+          <div class="feedback-icon" id="feedback-icon">ℹ️</div>
+          <div class="feedback-body">
+            <h4 id="feedback-title">Status da Execução</h4>
+            <p id="feedback-message">Mensagem da execução</p>
+          </div>
+          <button type="button" class="feedback-close-btn" id="btn-close-feedback" title="Fechar">×</button>
+        </div>
+
         <!-- Cards de Métricas -->
         <div class="metrics-grid">
           <div class="metric-card">
@@ -150,7 +178,7 @@
                 </div>
                 <div class="post-footer-actions">
                   <a href="https://www.instagram.com/thebackenddrop/" target="_blank" class="btn btn-outline" id="latest-instagram-link">
-                    <span>🔗</span> Ver no Instagram (@thebackenddrop) ↗
+                    <span>🔗</span> Ver no Instagram (@<span id="latest-ig-handle">thebackenddrop</span>) ↗
                   </a>
                   <span class="post-timestamp" id="latest-post-date">--/--/----</span>
                 </div>
@@ -213,7 +241,7 @@
                 <div class="phone-screen">
                   <div class="insta-header">
                     <div class="insta-avatar"></div>
-                    <span class="insta-username">@thebackenddrop</span>
+                    <span class="insta-username" id="preview-insta-handle">@seu_perfil</span>
                   </div>
                   <div class="insta-media">
                     <img id="preview-rendered-img" src="/api/media/latest-card-1080x1350.png" alt="Prévia do Card" onerror="this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=1080&h=1350&fit=crop'" />
@@ -320,7 +348,12 @@
 
               <div class="form-group">
                 <label for="cfg-meta-token">Access Token de Longa Duração (System User):</label>
-                <input type="password" id="cfg-meta-token" placeholder="Insira novo token para atualizar..." />
+                <div class="input-with-action">
+                  <input type="password" id="cfg-meta-token" placeholder="Insira novo token para atualizar..." />
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-test-meta">
+                    <span>⚡</span> Testar Conexão
+                  </button>
+                </div>
                 <small id="meta-token-status">Status do token atual: Verificando...</small>
               </div>
 

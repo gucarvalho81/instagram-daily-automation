@@ -258,14 +258,38 @@ try {
   assert.ok(dataPreview.imageUrl, 'preview deve retornar imageUrl');
   assert.ok(dataPreview.content, 'preview deve retornar postContent');
 
-  // Teste 8.5: Rota desconhecida /api/* retornando 404 JSON
+  // Teste 8.5: POST /api/test-meta (Validação com campos ausentes)
+  console.log('  ✔ Validando tratamento amigável de erro em POST /api/test-meta...');
+  const resMetaValidation = await fetch(`http://localhost:${TEST_PORT}/api/test-meta`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessToken: '', accountId: '' })
+  });
+  assert.equal(resMetaValidation.status, 400, 'POST /api/test-meta sem credenciais deve responder 400');
+  const dataMetaVal = await resMetaValidation.json();
+  assert.equal(dataMetaVal.success, false, 'Deve retornar success: false');
+  assert.ok(dataMetaVal.message.includes('Token'), 'Mensagem amigável deve informar que falta token');
+
+  // Teste 8.6: POST /api/trigger em modo Simulado (Dry-Run)
+  console.log('  ✔ Validando disparo seguro em POST /api/trigger no modo DRY-RUN...');
+  const resTriggerDry = await fetch(`http://localhost:${TEST_PORT}/api/trigger`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dryRun: true })
+  });
+  assert.equal(resTriggerDry.status, 202, 'POST /api/trigger dryRun deve responder 202 Accepted');
+  const dataTrigger = await resTriggerDry.json();
+  assert.equal(dataTrigger.success, true, 'Deve retornar success: true');
+  assert.equal(dataTrigger.dryRun, true, 'dryRun deve ser true');
+
+  // Teste 8.7: Rota desconhecida /api/* retornando 404 JSON
   console.log('  ✔ Validando tratamento de 404 em rota de API inexistente...');
   const res404 = await fetch(`http://localhost:${TEST_PORT}/api/endpoint-inexistente`);
   assert.equal(res404.status, 404, 'Rota desconhecida deve retornar HTTP 404');
   const data404 = await res404.json();
   assert.ok(data404.error, 'Resposta 404 de API deve conter mensagem de erro em JSON');
 
-  // Teste 8.6: Rota SPA Frontend (GET /)
+  // Teste 8.8: Rota SPA Frontend (GET /)
   console.log('  ✔ Validando entrega do HTML da SPA (GET /)...');
   const resHtml = await fetch(`http://localhost:${TEST_PORT}/`);
   assert.equal(resHtml.status, 200, 'GET / deve retornar HTTP 200');
@@ -372,3 +396,4 @@ assert.equal(parseDateForLocal('2026-09-22T21:18:44.123Z'), '2026-09-22T21:18:44
 console.log('\n' + '='.repeat(70));
 console.log('🎉 [TESTES CONCLUÍDOS] 100% dos testes unitários passaram com sucesso!');
 console.log('='.repeat(70) + '\n');
+process.exit(0);

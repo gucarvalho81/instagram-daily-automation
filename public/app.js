@@ -20,11 +20,19 @@ document.addEventListener('DOMContentLoaded', () => {
     activeInstagramUsername = (username || 'thebackenddrop').replace(/^@/, '');
     const sidebarLink = document.getElementById('sidebar-instagram-link');
     const sidebarHandle = document.getElementById('sidebar-ig-handle');
+    const latestIgHandle = document.getElementById('latest-ig-handle');
+    const previewInstaHandle = document.getElementById('preview-insta-handle');
     if (sidebarLink) {
       sidebarLink.href = `https://www.instagram.com/${activeInstagramUsername}/`;
     }
     if (sidebarHandle) {
       sidebarHandle.textContent = activeInstagramUsername;
+    }
+    if (latestIgHandle) {
+      latestIgHandle.textContent = activeInstagramUsername;
+    }
+    if (previewInstaHandle) {
+      previewInstaHandle.textContent = `@${activeInstagramUsername}`;
     }
   }
 
@@ -59,6 +67,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const pulseIndicator = document.getElementById('pulse-indicator');
   const statusText = document.getElementById('status-text');
   const sidebarCron = document.getElementById('sidebar-cron');
+
+  // Banners de Onboarding & Feedback de Execução
+  const onboardingBanner = document.getElementById('onboarding-banner');
+  const btnOnboardingKeys = document.getElementById('btn-onboarding-keys');
+  const btnOnboardingDryrun = document.getElementById('btn-onboarding-dryrun');
+  const executionFeedbackBanner = document.getElementById('execution-feedback-banner');
+  const feedbackIcon = document.getElementById('feedback-icon');
+  const feedbackTitle = document.getElementById('feedback-title');
+  const feedbackMessage = document.getElementById('feedback-message');
+  const btnCloseFeedback = document.getElementById('btn-close-feedback');
+  let lastSeenExecutionTimestamp = 0;
 
   // Métricas
   const metricScheduleTime = document.getElementById('metric-schedule-time');
@@ -111,6 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const cfgMetaId = document.getElementById('cfg-meta-id');
   const cfgMetaToken = document.getElementById('cfg-meta-token');
   const metaTokenStatus = document.getElementById('meta-token-status');
+  const btnTestMeta = document.getElementById('btn-test-meta');
   const cfgTopicTheme = document.getElementById('cfg-topic-theme');
   const cfgScheduleTime = document.getElementById('cfg-schedule-time');
   const cfgTimezone = document.getElementById('cfg-timezone');
@@ -243,6 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sidebarAuthBox) sidebarAuthBox.style.display = 'none';
       }
 
+      const wasRunning = isRunning;
       isRunning = data.isPipelineRunning;
       if (isRunning) {
         pulseIndicator.className = 'pulse-dot running';
@@ -250,6 +271,42 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         pulseIndicator.className = 'pulse-dot active';
         statusText.textContent = 'Sistema Ativo';
+      }
+
+      // Banner Amigável de Onboarding
+      if (onboardingBanner) {
+        if (data.hasGeminiKey === false || data.hasMetaCredentials === false) {
+          onboardingBanner.style.display = 'flex';
+        } else {
+          onboardingBanner.style.display = 'none';
+        }
+      }
+
+      // Banner e Feedback da Execução
+      if (data.lastExecution && executionFeedbackBanner) {
+        const isNewExecution = data.lastExecution.timestamp !== lastSeenExecutionTimestamp;
+        if (isNewExecution) {
+          lastSeenExecutionTimestamp = data.lastExecution.timestamp;
+          executionFeedbackBanner.style.display = 'flex';
+          executionFeedbackBanner.className = `execution-feedback-banner ${data.lastExecution.success ? 'success' : 'error'}`;
+          if (feedbackIcon) feedbackIcon.textContent = data.lastExecution.success ? '🎉' : '⚠️';
+          if (feedbackTitle) {
+            feedbackTitle.textContent = data.lastExecution.success
+              ? `Execução Concluída com Sucesso (${data.lastExecution.mode})`
+              : `Falha na Execução (${data.lastExecution.mode})`;
+          }
+          if (feedbackMessage) {
+            feedbackMessage.textContent = data.lastExecution.message || data.lastExecution.error;
+          }
+
+          // Se acabou de finalizar uma execução em background acompanhada pelo usuário
+          if (wasRunning && !isRunning) {
+            showToast(data.lastExecution.message || 'Ciclo de automação concluído!', data.lastExecution.success ? 'success' : 'error');
+            if (data.lastExecution.success) {
+              loadHistory();
+            }
+          }
+        }
       }
 
       sidebarCron.textContent = `Agendado: ${data.scheduleTime || '--:--'}`;
@@ -554,7 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
         geminiKeyStatus.textContent = `Conexão bem sucedida! ${data.models?.length || 0} modelos compatíveis.`;
         geminiKeyStatus.style.color = 'var(--accent-emerald)';
       } else {
-        showToast(data.message || 'Falha ao validar chave.', 'error');
+        showToast(data.message || 'Falha ao validar chave do Gemini.', 'error');
         geminiKeyStatus.textContent = data.message;
         geminiKeyStatus.style.color = 'var(--accent-rose)';
       }
@@ -564,6 +621,47 @@ document.addEventListener('DOMContentLoaded', () => {
       btnTestGemini.disabled = false;
       btnTestGemini.textContent = '⚡ Testar Conexão';
     }
+  });
+
+  // Teste de Conexão da Meta Graph API
+  btnTestMeta?.addEventListener('click', async () => {
+    const token = cfgMetaToken.value.trim();
+    const accountId = cfgMetaId.value.trim();
+    btnTestMeta.disabled = true;
+    btnTestMeta.textContent = 'Testando...';
+
+    try {
+      const res = await apiFetch('/api/test-meta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessToken: token || undefined,
+          accountId: accountId || undefined
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(data.message, 'success');
+        metaTokenStatus.textContent = data.message;
+        metaTokenStatus.style.color = 'var(--accent-emerald)';
+      } else {
+        showToast(data.message || 'Falha ao validar credenciais da Meta.', 'error');
+        metaTokenStatus.textContent = data.message;
+        metaTokenStatus.style.color = 'var(--accent-rose)';
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      btnTestMeta.disabled = false;
+      btnTestMeta.textContent = '⚡ Testar Conexão';
+    }
+  });
+
+  // Listeners dos Banners de Onboarding e Feedback
+  btnOnboardingKeys?.addEventListener('click', () => switchTab('settings'));
+  btnOnboardingDryrun?.addEventListener('click', () => triggerExecution(true));
+  btnCloseFeedback?.addEventListener('click', () => {
+    if (executionFeedbackBanner) executionFeedbackBanner.style.display = 'none';
   });
 
   // 7. Formulários de Configurações
