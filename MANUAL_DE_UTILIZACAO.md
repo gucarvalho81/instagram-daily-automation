@@ -204,17 +204,34 @@ docker compose logs -f
 docker compose down
 ```
 
-### Opção B: Com PM2 (Process Manager)
-```bash
-# Instalar o PM2 globalmente
-npm install -g pm2
+### Opção B: Com PM2 (Execução Autônoma no Windows ou Linux)
+O projeto inclui configuração oficial de produção via [ecosystem.config.cjs](file:///c:/Users/guria/OneDrive/Documentos/instagram-daily-automation/ecosystem.config.cjs) e atalhos diretos no `package.json`.
 
-# Iniciar o serviço com reinicialização automática em falhas
-pm2 start src/index.js --name "instagram-automation" -- --web
+Para guia detalhado, consulte [docs/EXECUCAO_AUTONOMA_PM2.md](file:///c:/Users/guria/OneDrive/Documentos/instagram-daily-automation/docs/EXECUCAO_AUTONOMA_PM2.md).
 
-# Configurar para iniciar junto com o boot do sistema operacional
-pm2 startup
-pm2 save
+#### Comandos Rápidos pelo npm:
+```powershell
+# Verificar status da automação:
+npm.cmd run pm2:status
+
+# Visualizar logs em tempo real:
+npm.cmd run pm2:logs
+
+# Reiniciar o serviço:
+npm.cmd run pm2:restart
+
+# Parar temporariamente:
+npm.cmd run pm2:stop
+
+# Iniciar o serviço:
+npm.cmd run pm2:start
+```
+
+#### Inicialização Automática com o Boot do Windows:
+A automação está configurada via `pm2-windows-startup` no Registro do Windows (`HKCU\...\Run`), iniciando de forma silenciosa e invisível em background a cada logon sem abrir nenhuma janela de prompt de comando.
+Para salvar o estado atual após qualquer alteração:
+```powershell
+npm.cmd run pm2:save
 ```
 
 ---

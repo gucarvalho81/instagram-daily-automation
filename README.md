@@ -156,17 +156,22 @@ node src/index.js --run-once --theme "Design Patterns em TypeScript"
 
 ## ⏱️ Execução em Produção
 
-### Opção A: Execução Contínua com Dashboard Web
-Inicia o Dashboard Web na porta 3000 e o Agendador Diário simultaneamente:
+### Opção A: Execução Contínua com PM2 (Recomendado para Windows e Linux)
+O projeto conta com configuração pronta no arquivo [ecosystem.config.cjs](file:///c:/Users/guria/OneDrive/Documentos/instagram-daily-automation/ecosystem.config.cjs), gerenciamento de logs em `logs/` e reinício automático em falhas ou no boot:
 ```bash
-npm start
+# Iniciar a automação gerenciada pelo PM2:
+npm.cmd run pm2:start
+
+# Acompanhar logs em tempo real:
+npm.cmd run pm2:logs
+
+# Verificar status da esteira:
+npm.cmd run pm2:status
+
+# Salvar lista para reinício automático no boot:
+npm.cmd run pm2:save
 ```
-Com gerenciador de processos PM2 (recomendado para VPS):
-```bash
-npm install -g pm2
-pm2 start src/index.js --name "instagram-automation" -- --web
-pm2 save
-```
+📖 *Consulte o [Guia de Execução Autônoma no Windows com PM2](file:///c:/Users/guria/OneDrive/Documentos/instagram-daily-automation/docs/EXECUCAO_AUTONOMA_PM2.md) para detalhes da integração com o Registro do Windows e inicialização silenciosa.*
 
 ### Opção B: Docker / Docker Compose
 Suba o serviço isolado em segundo plano com volume persistente para o SQLite e acesso ao Dashboard Web na porta 3000:
