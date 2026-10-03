@@ -181,54 +181,131 @@ export function renderSvgToPng(svgContent) {
 }
 
 /**
+ * Valida se uma URL pública realmente serve uma imagem válida e acessível para o crawler da Meta
+ * @param {string} url
+ * @returns {Promise<boolean>}
+ */
+async function verifyPublicImageUrl(url) {
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'
+      },
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (!res.ok) return false;
+
+    const contentType = (res.headers.get('content-type') || '').toLowerCase();
+    if (!contentType.startsWith('image/')) return false;
+
+    // Garante que o arquivo não está vazio nem truncado (mínimo de 5KB para um PNG 1080x1350)
+    const contentLength = parseInt(res.headers.get('content-length') || '0', 10);
+    if (contentLength > 0 && contentLength < 5000) return false;
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Faz upload do PNG para um servidor de mídia público temporário gratuito para a Meta poder baixar
+ * Utiliza cadeia multi-provedor (Uguu.se -> Tmpfiles.org -> Catbox.moe) com validação de formato
  * @param {Buffer} pngBuffer
  * @returns {Promise<string>} URL pública HTTPS da imagem
  */
 async function uploadToPublicHost(pngBuffer) {
   console.log('[LOCAL RENDERER] Hospedando imagem temporária para acesso da Instagram Graph API...');
 
-  try {
-    // 1. Provedor primário: Catbox
-    const formData = new FormData();
-    formData.append('reqtype', 'fileupload');
-    formData.append('fileToUpload', new Blob([pngBuffer], { type: 'image/png' }), `card-${Date.now()}.png`);
+  const errors = [];
+  const fileName = `card-${Date.now()}.png`;
 
-    const res = await fetch('https://catbox.moe/user/api.php', {
+  // 1. Provedor Primário: Uguu.se (Upload direto, CDN global rápida e 100% aceito pela Meta)
+  try {
+    console.log('[LOCAL RENDERER] Tentando provedor primário (Uguu.se)...');
+    const uguuForm = new FormData();
+    uguuForm.append('files[]', new Blob([pngBuffer], { type: 'image/png' }), fileName);
+
+    const uguuRes = await fetch('https://uguu.se/upload', {
       method: 'POST',
-      body: formData
+      body: uguuForm,
+      signal: AbortSignal.timeout(12000)
     });
 
-    if (res.ok) {
-      const url = (await res.text()).trim();
-      if (url.startsWith('http')) {
-        console.log(`[LOCAL RENDERER] Imagem 1080x1350 hospedada com sucesso: ${url}`);
+    if (uguuRes.ok) {
+      const data = await uguuRes.json();
+      const directUrl = data?.files?.[0]?.url;
+      if (directUrl && (await verifyPublicImageUrl(directUrl))) {
+        console.log(`[LOCAL RENDERER] Imagem 1080x1350 hospedada e validada com sucesso via Uguu: ${directUrl}`);
+        return directUrl;
+      }
+    }
+  } catch (err) {
+    errors.push(`Uguu.se: ${err.message}`);
+    console.warn('[LOCAL RENDERER] Falha no Uguu.se, tentando próximo provedor...', err.message);
+  }
+
+  // 2. Provedor Secundário: Tmpfiles.org (com extração do token oficial de download da página)
+  try {
+    console.log('[LOCAL RENDERER] Tentando provedor secundário (Tmpfiles.org)...');
+    const tmpForm = new FormData();
+    tmpForm.append('file', new Blob([pngBuffer], { type: 'image/png' }), fileName);
+
+    const tmpRes = await fetch('https://tmpfiles.org/api/v1/upload', {
+      method: 'POST',
+      body: tmpForm,
+      signal: AbortSignal.timeout(12000)
+    });
+
+    if (tmpRes.ok) {
+      const data = await tmpRes.json();
+      const pageUrl = data?.data?.url;
+      if (pageUrl) {
+        // O tmpfiles.org exige o token de download presente na página de visualização
+        const pageRes = await fetch(pageUrl, { signal: AbortSignal.timeout(8000) });
+        const html = await pageRes.text();
+        const match = html.match(/href="([^"]*\/dl\/[^"]+)"/);
+        const directUrl = (match && match[1]) ? match[1] : pageUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+
+        if (await verifyPublicImageUrl(directUrl)) {
+          console.log(`[LOCAL RENDERER] Imagem 1080x1350 hospedada e validada com sucesso via Tmpfiles: ${directUrl}`);
+          return directUrl;
+        }
+      }
+    }
+  } catch (err) {
+    errors.push(`Tmpfiles.org: ${err.message}`);
+    console.warn('[LOCAL RENDERER] Falha no Tmpfiles.org, tentando próximo provedor...', err.message);
+  }
+
+  // 3. Provedor Terciário: Catbox.moe (com validação rigorosa de integridade)
+  try {
+    console.log('[LOCAL RENDERER] Tentando provedor terciário (Catbox.moe)...');
+    const catboxForm = new FormData();
+    catboxForm.append('reqtype', 'fileupload');
+    catboxForm.append('fileToUpload', new Blob([pngBuffer], { type: 'image/png' }), fileName);
+
+    const catboxRes = await fetch('https://catbox.moe/user/api.php', {
+      method: 'POST',
+      body: catboxForm,
+      signal: AbortSignal.timeout(12000)
+    });
+
+    if (catboxRes.ok) {
+      const url = (await catboxRes.text()).trim();
+      if (url.startsWith('http') && (await verifyPublicImageUrl(url))) {
+        console.log(`[LOCAL RENDERER] Imagem 1080x1350 hospedada e validada com sucesso via Catbox: ${url}`);
         return url;
       }
     }
   } catch (err) {
-    console.warn('[LOCAL RENDERER] Provedor primário falhou, usando fallback...', err.message);
+    errors.push(`Catbox.moe: ${err.message}`);
+    console.warn('[LOCAL RENDERER] Falha no Catbox.moe...', err.message);
   }
 
-  // 2. Provedor secundário fallback: tmpfiles.org
-  const fallbackForm = new FormData();
-  fallbackForm.append('file', new Blob([pngBuffer], { type: 'image/png' }), `card-${Date.now()}.png`);
-
-  const fallbackRes = await fetch('https://tmpfiles.org/api/v1/upload', {
-    method: 'POST',
-    body: fallbackForm
-  });
-
-  if (!fallbackRes.ok) {
-    throw new Error(`Falha ao hospedar imagem nos servidores públicos: HTTP ${fallbackRes.status}`);
-  }
-
-  const data = await fallbackRes.json();
-  const rawUrl = data.data.url;
-  // tmpfiles.org/XXXX -> tmpfiles.org/dl/XXXX para download direto
-  const directUrl = rawUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
-  console.log(`[LOCAL RENDERER] Imagem 1080x1350 hospedada no fallback: ${directUrl}`);
-  return directUrl;
+  throw new Error(`Falha crítica: Não foi possível hospedar imagem em nenhum provedor público com formato validado. Erros: ${errors.join(' | ')}`);
 }
 
 /**
